@@ -48,9 +48,6 @@ Explorez le code de R pour :
 * Les classes et leur changement automatique dans R
 * La concaténation c(), les vecteurs, le subscripting []
 * La fonction length()
-```{r}
-```
-
 
 ```{r}
 # Assignation
@@ -64,8 +61,8 @@ class(temp)
 
 ```{r}
 # Packages and direct access to function from package
-library(readxl)
-d_e <- read_excel(path = "sae3d.xlsx")
+library(readr)
+d_e <- read_csv(file = "sae3d.csv")
 
 # Data class
 temp <- "1"
@@ -431,8 +428,8 @@ mean(d_f$age, na.rm = T)
 
 ## 4.2. Faire tableau 1 avec tbl_summary
 Utilisez la fonction tbl_summary() du package gtsummary pour faire, de façon automatisée, le tableau 1.  
-La première étape est d'obtenir les statistiques descriptives par séquence vaccinale.
-Ensuite, vous pouvez utiliser une fonction, soit add_overall(), pour obtenir les résultats pour l'ensemble du groupe en même temps.
+La première étape est d'obtenir les statistiques descriptives par séquence vaccinale.  
+Ensuite, vous pouvez utiliser une fonction, soit add_overall(), pour obtenir les résultats pour l'ensemble du groupe en même temps.  
 Exportez les résultats avec write.csv() de openxlsx. Il faut aussi transformer le tableau en tibble avec as_tibble().
 ```{r}
 tbl1_seq <- tbl_summary(d_h %>% select(age, sexe, atcd_covid, interv_0_1, interv_1_2, interv_2_3, seq_vax_covid),

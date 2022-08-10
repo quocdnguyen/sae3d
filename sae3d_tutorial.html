@@ -1782,10 +1782,10 @@ mean() de faire l’équivalent de mean(data$age, na.rm = T).</p>
 <h2>4.2. Faire tableau 1 avec tbl_summary</h2>
 <p>Utilisez la fonction tbl_summary() du package gtsummary pour faire,
 de façon automatisée, le tableau 1.<br />
-La première étape est d’obtenir les statistiques descriptives pour
-l’ensemble de la cohorte.<br />
-La 2e étape est de le faire en stratifiant par séquence de vaccins et de
-statut COVID.<br />
+La première étape est d’obtenir les statistiques descriptives par
+séquence vaccinale.<br />
+Ensuite, vous pouvez utiliser une fonction, soit add_overall(), pour
+obtenir les résultats pour l’ensemble du groupe en même temps.<br />
 Exportez les résultats avec write.csv() de openxlsx. Il faut aussi
 transformer le tableau en tibble avec as_tibble().</p>
 <div id="uth-6" class="section level3">
