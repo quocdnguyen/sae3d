@@ -1,0 +1,596 @@
+---
+title: "Tutoriel R avec 3e dose"
+author: "NG_Lab"
+date: "12/07/2022"
+output:
+  html_document:
+    df_print: paged
+---
+# 0. Setup - Préparer son environnement R
+Installer et charger les packages suivants :  
+* tidyverse
+* lubridate
+* janitor
+* viridis
+* openxlsx
+* gtsummary
+```{r setup, include=F}
+knitr::opts_chunk$set(echo = F)
+knitr::opts_chunk$set(include = F)
+library("tidyverse")
+library("lubridate")
+library("janitor")
+library("viridis")
+library("gtsummary")
+theme_set(theme_minimal())
+```
+
+### 0. UTH (Under the hood)
+Installez le package tidyverse avec install.packages("package").   
+Tidyverse inclut d'autres packages.  
+Charger un package en utilisant library(package).  
+```{r}
+# Packages et fonctions
+install.packages("tidyverse")
+library(tidyverse)
+```
+
+# 1. Lire les données
+Lisez le fichier sae3d.csv et assignez-le à l'objet d_e.
+```{r}
+# Lire données xlsx
+d_e <- readr::read_csv(file = "sae3d.csv")
+```
+
+### 1. UTH
+Explorez le code de R pour :  
+* L'assignation
+* Les classes et leur changement automatique dans R
+* La concaténation c(), les vecteurs, le subscripting []
+* La fonction length()
+```{r}
+```
+
+
+```{r}
+# Assignation
+temp <- "1"
+temp
+class(temp)
+temp <- 1
+class(temp)
+```
+
+
+```{r}
+# Packages and direct access to function from package
+library(readxl)
+d_e <- read_excel(path = "sae3d.xlsx")
+
+# Data class
+temp <- "1"
+class(temp)
+
+temp <- 1
+class(temp)
+
+temp <- TRUE
+class(temp)
+
+temp <- TRUE + 1
+temp
+class(temp)
+
+# Concatenation and vectors
+temp <- 1:3
+temp
+temp <- c(3,4,5)
+temp
+class(temp)
+length(temp)
+
+# Subscripting
+temp[1]
+temp[2:3]
+temp[c(1,3)]
+temp[2] + temp[3]
+
+temp <- c(1, "2")
+temp
+class(temp) # Single data class in a vector
+```
+
+# 2. Explorer et comprendre sommairement les données
+Utilisez les fonctions dim(), head(), slice_sample() et str() pour mieux comprendre les dimensions, la longueur, le contenu et la structure des données.
+
+```{r}
+dim(d_e)
+head(d_e)
+slice_sample(d_e, n = 10)
+str(d_e)
+
+d_e$DOSE2
+DOSE2 <- c("2021-04-18", "2021-04-17")
+```
+
+### 2. UTH
+Jouez  avec ces fonctions pour mieux comprendre les fonctions et leurs arguments.  
+Explorez les classes de ces objets, utilisez [] et $ pour accéder à diverses parties de d_e.  
+Utilisez la fonction list() pour recréer une version réduite de d_e avec les 6 premières rangées et les colonnes 3, 8 et 9.
+```{r}
+# Fonctions
+head(d_e)
+head(d_e, n = 10)
+head(d_e, 10)
+dim(d_e)
+length(d_e)
+
+# Help
+?head
+
+# Structure
+str(d_e)
+
+# Change class 
+class(d_e)
+d_e_df <- as.data.frame(d_e)
+class(d_e_df)
+str(d_e_df)
+
+# List class (and subset)
+d_e_df[1:6,]
+d_e_df[2, ]
+d_e_df$DOSE1
+d_e_df$DOSE1[1:6]
+head(d_e_df[2, ])
+d_e_a_creer <- d_e_df[1:6, c(3,8,9)]
+
+# Recréer de_a_creer : df est une liste bonifiée avec des vecteurs nommés de même longueur
+class(d_e_a_creer)
+d_e_copie <- list(Type1 = c("Pfizer", "Pfizer", "Pfizer", "Pfizer", "Pfizer", "Pfizer"),
+                  Âge   = c(83, 81, 76, 75, 79, 77),
+                  Sexe  = c(rep("H", 2), "F", rep("H", 3))) 
+# Type1 = rep("Pfizer", 6)
+# ?rep
+
+d_e_copie
+class(d_e_copie)
+
+d_e_copie <- as.data.frame(d_e_copie)
+class(d_e_copie)
+d_e_copie
+```
+
+# 3. Nettoyer et créer des variables et observations
+
+## 3.1. Nettoyer et renommer les colonnes (variables)
+Assignez à d_f l'objet d_e (faites-en une copie).  
+Utilisez la fonction clean_names dans le package janitor pour faire le ménage des noms.  
+Utilisez la fonction rename pour renommer plus clairement covid à date_covid dose 1-2-3 à date_dose 1-2-3.  
+
+```{r}
+d_f <- d_e
+d_f <- d_f %>% janitor::clean_names()
+d_f <- d_f %>% rename(date_covid = covid,
+                      date_dose1 = dose1,
+                      date_dose2 = dose2,
+                      date_dose3 = dose3)
+```
+
+### 3.1. UTH
+Utilisez plutôt base R pour changer le nom de certaines colonnes avec names() et l'assgination.  
+Examinez comment fonctionnent les pipes %>%.  
+```{r}
+# Names
+names(d_e_copie)
+names(d_e_copie) <- c("type1", "sexe", "age")
+names(d_e_copie)
+d_e_copie
+
+# Pipes
+d_e_copie %>% names()
+d_e_copie <- rename(d_e_copie,
+                    type_1er_vaccin = type1,
+                    age = sexe,
+                    sexe = age)
+
+## Base and tidyverse
+```
+
+## 3.2. Sélectionner les participants
+En utilisant %>%, filter, !, > et is.na(), garder les bons participants en vertu de ces 3 critères :  
+1. Date de la 3e dose après ou égal au 17 octobre 2021
+2. Intervalle entre la 1re et 2e dose de plus de 35 jours
+3. Où les données sur les décès ne sont pas manquantes
+```{r}
+# Retirer les 3e doses pour autres raisons, antérieures à la stratégie 3e dose CHSLD (n = X) 
+d_g <- d_f %>%
+      filter(date_dose3 >= "2021-10-17") 
+
+# Retirer ceux sans long délais et avec issues manquantes
+d_g <- d_g %>% 
+      filter(date_dose2 - date_dose1 > 35,
+             !is.na(deces))
+
+```
+
+### 3.2. UTH
+Explorez filter() (rangées) et son pendant "colonnes", soit select().  
+Sélectionner des _colonnes_ en utilisant base R avec le nom des colonnes et [].  
+Obtenez aussi le contenu d'une colonne spécifique avec $. Comparez avec pull() et avec select().  
+Sélectionner aussi des rangées selon une condition avec base R en combinant $ dans [].  
+Prenez connaissance et travaillez avec les opérateurs dans R : ! & | < > = %in% %%.  
+Utilisez is.na en combinaison avec $, [], %>% .  
+
+```{r}
+d_f_complet <- d_f
+
+# Selecting columns using dplyr (subset variables) - select()
+d_f_complet %>% select(age, type1)
+
+# Selecting columns using base (remember a df is a list)
+d_f_complet[ ,c("age", "type1")] 
+d_f_complet[ ,c(8, 3)]
+
+## Selecting data within a single column using base
+d_f_complet$age
+d_f_complet %>% pull(age)
+
+# Subsetting observations (rows) using dplyr - filter()
+d_f_complet %>% filter(age >= 90)
+
+## Quasiquotation
+
+# Subsetting obervations (rows) using base
+d_f_complet[d_f$age >= 90,]
+
+# Operators
+# ! & | < > = %in% %%
+TRUE
+T
+!T
+!F
+T & F
+1:5 == 3
+"a" %in% c("allo", "bal", "calculatrice")
+#"a" %in% unlist(str_split(paste(c("allo", "bal", "calculatrice"), collapse = ""), pattern = ""))
+
+# is.na() (very basics)
+d_f_complet[41:50,]
+is.na(d_f_complet[41:50,"date_covid"])
+is.na(d_f_complet$date_covid[41:50])
+d_f_complet$date_covid[41:50] %>% is.na
+```
+
+## 3.3. Nettoyer/transformer/créer variables requises
+Créez une variable pour l'antécédent de COVID avec is.na pour 0 si non et 1 si oui (numeric).  
+Créez par la suite une variable pour les différentes séquences vaccinales en combinant les colonnes avec paste().  
+Créez des variables pour les intervalles temporelles entre les doses.  
+Utilisez la fonction across() et le purr-style lambda ainsi que ifelse() pour transformer les "NON" à 0 et les "OUI" à 1.  
+Réutilisez rowwise() ainsi que ifelse(), sum(), across() pour créer la variable sae qui sera 1 si au moins un SAE est survenu, sinon 0.  
+Finalement, déplacez la nouvelle variable sae avant la variable deces.  
+```{r}
+# Créer statut COVID
+d_g <- d_g %>% 
+      mutate(atcd_covid = ifelse(is.na(date_covid), 0, 1))
+
+# Créer séquences vaccinales
+d_g <- d_g %>% 
+      mutate(seq_vax_covid = paste(type1, type2, type3, atcd_covid, sep = "-")) 
+
+# Créer les intervalles
+d_g <- d_g %>% 
+      mutate(interv_0_1 = date_dose1 - date_covid,
+             interv_1_2 = date_dose2 - date_dose1,
+             interv_2_3 = date_dose3 - date_dose2)
+
+# Créer présence de SAE
+## Changer "NON" à 0 et "OUI" à 1
+d_g <- d_g %>% mutate(across(deces:detresse, ~ ifelse(. == "NON", 0, 1))) 
+
+## Créer présence de SAE avec sum >= 1
+d_h <- d_g %>% 
+      rowwise() %>% 
+      mutate(sae = ifelse(sum(across(deces:detresse)) >= 1, 1, 0)) %>% 
+      ungroup() # or rowSums or + on at the time
+
+d_h <- d_h %>% relocate(sae, .before = deces)
+```
+
+### 3.3. UTH
+Examinez comment fonctionne mutate() dans dplyr.  
+Comparez avec la création de nouvelles variables avec base R et l'utilisation de $.  
+Voyez comment s'utilise la syntaxe de ifelse().  
+Constatez comment la vectorisation fonctionne dans R.  
+Examinez le fonctionnement de paste.  
+Utilisez select et across en combinaison pour appliquer la fonction tolower() sur des colonnes spécifiques. Le faire de façon équivalente avec un purr-style lambda.  
+Comparez le même code avec et sans rowwise() lorsqu'on utilise sum().  
+
+```{r}
+# Créer de nouvelles variables avec dplyr - mutate()
+mutate(d_e_copie, 
+       age_plus_5 = age + 5)
+
+# Créer de nouvelles variables avec base
+d_e_copie$age + 5
+d_e_copie$age_plus_5 <- d_e_copie$age + 5
+
+# ifelse()
+lettre <- "a"
+ifelse(lettre %in% c("a", "l", "l", "o"), "Oui, lettre dans allo", "Non")
+
+lettre <- "b"
+ifelse(lettre %in% c("a", "l", "l", "o"), "Oui, lettre dans allo", "Non")
+
+## Vectorisation dans R et pour dplyr
+1:3 * 3
+(1:3 * 3) %% 2
+ifelse(1:6 %% 2 == 0, "pair", "impair")
+
+# paste() et paste0()
+paste(1, "2")
+a_coller <- "YOLO"
+paste(1, "2", a_coller, sep = "-")
+
+# Transformer les valeurs de colonnes spécifiques - (col:col) et across()
+d_f %>% select(deces:gi) 
+d_f %>% select(age:hypota) %>% 
+      mutate(across(deces:gi, tolower)) # ?tolower ?across
+
+## Purr-style lambda
+d_f %>% select(age:hypota) %>% 
+      mutate(across(deces:gi, ~ tolower(.))) # ~ et .
+
+# rowwise() et ungroup()
+d_e_copie %>% 
+      mutate(age_idem = age,
+             age_double = age + age_idem,
+             age_double2 = sum(age, age_idem)) ## Problème avec age_double2, car somme verticale et non horizontale
+
+d_e_copie %>% 
+      rowwise() %>% 
+      mutate(age_idem = age,
+             age_double2 = sum(age, age_idem)) %>% 
+      ungroup() # Retirer le rowwise pour ne pas causer de problème dans les analyses futures
+```
+
+# 4. Analyser et résumer descriptivement
+## 4.1. Manuellement avec summary, summarise et count, pour début de tableau 1
+Utilisez la fonction summary() pour examiner et synthétiser rapidement les données pour l'ensemble de la cohorte.  
+Utilisez ensuite summarise () du tidyverse pour calculer la moyenne [mean()], l'écart-type [sd()], la médiane [median()], l'écart inter-quartile [quantile()]. Au besoin, utilisez aussi l'argument na.rm.  
+Pour dénombrer les variables catégorielles, utilisez count().  
+
+Pour les sous-groupes selon la séquence vaccinale, utilisez group_by() avec summarise() pour obtenir ces mêmes statistiques.  
+Utilisez finalement count() pour dénombrer les hommes et les femmes selon les séquences vaccinales.  
+
+```{r}
+# Toute la cohorte
+summary(d_h)
+
+d_h %>% summarise(moy_age            = mean(age),
+                  et_age             = sd(age, na.rm = T),
+                  med_interv_0_1     = median(interv_0_1, na.rm = T),
+                  med_iqr_interv_0_1 = quantile(interv_0_1, 0.75, na.rm = T) - quantile(interv_0_1, 0.25, na.rm = T))
+
+d_h %>% count(sexe)
+
+# Par séquence
+d_h %>% group_by(seq_vax_covid) %>% 
+      summarise(moy_age            = mean(age),
+                et_age             = sd(age))
+
+d_h %>% count(seq_vax_covid, sexe)
+```
+
+### 4.1. UTH
+Utilisez summary sur divers objets pour voir le résultat.  
+Saisissez la différence entre summarise() et mutate(). Vous pouvez regarder le cheat sheet dplyr sur internet.  
+Tentez d'utiliser mutate plutôt que summarise pour voir le résultat.  
+Vous pouvez aussi utiliser group_by pour plus d'une variable de grouping à la fois.  
+Explorez les fonctions mean(), max(), min(), quantile().  
+Utiliser table() pour obtenir un résultat "équivalent" à count().  
+Trouvez une façon équivalente avec filter(), is.na(), summarise() et mean() de faire l'équivalent de mean(data$age, na.rm = T).  
+```{r}
+# summary()
+d_h %>% summary()
+
+# summarise() vs mutate()
+
+# Tableau de fréquence avec dplyr - count()
+d_h %>% count(seq_vax_covid)
+d_h %>% count(sexe)
+d_h %>% count(seq_vax_covid, sexe)
+d_h %>% count(seq_vax_covid, sexe, age)
+
+# Tableau de fréquence avec base
+table(d_h$seq_vax_covid)
+table(d_h$seq_vax_covid, d_h$sexe)
+table(d_h$seq_vax_covid, d_h$sexe, d_h$age)
+
+# Mean, sd, median, quantile, min, max
+d_h %>% mean
+d_h$age %>% mean()
+mean(d_h$age)
+d_h$age %>% quantile(c(0.75, 0.25)) # quantile()
+
+# NA dans ces fonctions qui résument les distributions
+mean(d_f$age)
+is.na(d_f$age)
+sum(is.na(d_f$age))
+d_f %>% select(age) %>% is.na %>% sum
+d_f %>% select(age) %>% is.na %>% mean
+
+## Retirer manuellement les na et puis faire la moyenne de l'âge (comment?) OU
+d_f %>% filter(!is.na(age)) %>% summarise(moy_age = mean(age))
+mean(d_f$age, na.rm = T)
+?mean
+
+## group_by() syntax
+
+```
+
+## 4.2. Faire tableau 1 avec tbl_summary
+Utilisez la fonction tbl_summary() du package gtsummary pour faire, de façon automatisée, le tableau 1.  
+La première étape est d'obtenir les statistiques descriptives par séquence vaccinale.
+Ensuite, vous pouvez utiliser une fonction, soit add_overall(), pour obtenir les résultats pour l'ensemble du groupe en même temps.
+Exportez les résultats avec write.csv() de openxlsx. Il faut aussi transformer le tableau en tibble avec as_tibble().
+```{r}
+tbl1_seq <- tbl_summary(d_h %>% select(age, sexe, atcd_covid, interv_0_1, interv_1_2, interv_2_3, seq_vax_covid),
+            by = seq_vax_covid,
+            missing = "no",
+            statistic = list(age ~ "{mean} ({sd})"),
+            digits = list(everything() ~ 0)) %>% 
+      add_overall()
+
+tbl1_seq
+
+write.csv(as_tibble(tbl1_seq), "Tbl1_seq.csv", row.names = F)
+```
+
+### 4.2. UTH
+Examinez comment fonctionne la fonction tbl_summary() en regardant help.  
+Je vous suggère aussi de simplement googler la fonction pour trouver des tutoriels et des explications.  
+Examinez comment fonctionne la fonction write.csv() en regardant help. Notez l'utilisation de as_tibble() pour assurer que la classe est compatible avec write.csv().  
+```{r}
+# tbl_summary()
+## Search google for tutorial on tbl_summary
+?tbl_summary
+
+# write.csv()
+?write.csv
+
+# as_tibble()
+```
+
+# 5. Analyser inférentiellement 
+## 5.1.  Faire un tableau
+Il y a plusieurs façons de faire des tableaux dans R, dont la fonction table(). Dplyr (dans) offre plus de flexibilité.  
+Utilisez group_by(), summarise(), across(), purr-style lambda pour calculer la proportion (i) d'au moins 1 SAE et (ii) de chaque SAE, selon chaque séquence vaccinale et COVID.  
+Transformez ensuite l'ensemble des réponses en pourcentage, avec une décimale (ex 20.3%).
+```{r}
+# Faire tableau des proportions
+d_j <- d_h %>% 
+      group_by(seq_vax_covid) %>% 
+      summarise(across(sae:detresse, ~ sum(.) / n()))
+
+# Transformer pour avoir en pourcentage avec avec 1 décimale
+d_k <- d_j %>% mutate(across(!seq_vax_covid, ~ round(. * 100, 1)))
+```
+
+### 5.1. UTH
+Voyez comment n() fonctionne. Il est possible d'obtenir des résultats similaires à count() en utilisant n() en combinaison avec summarise() et group_by().  
+Essayez de reproduire le count() de la section 4.1.
+```{r}
+# n()
+d_h %>% count(seq_vax_covid, sexe)
+d_h %>% group_by(seq_vax_covid, sexe) %>% 
+      summarise(nombre = n())
+# round()
+```
+
+
+## 5.2 Faire des régressions (ici logistiques)
+La fonction glm() permet de faire des régressions GLM (generalized linear models), dont la régression logistique fait partie.  
+Utilisez glm() avec l'argument family = binomial pour régresser la présence d'au moins un SAE sur l'âge, le sexe et la séquence vaccinale et COVID. Assurez-vous avec fct_relevel que la séquence "Moderna-Pfizer-Moderna-0" soit le groupr de référence.  
+Examinez les résultats avec summary().  
+Obtenez manuellement les coefficients et intervalles de confiance en examinant la structure [str()] du modèle. Utilisez ensuite $, exp(), confint() pour sortir ces statistiques.  
+Finalement, utilisez la fonction tbl_regression() dans gtsummary pour obtenir ces résultats de façon plus automatisée.
+```{r}
+## SAE standard logistic regression
+fit <- glm(sae ~ age + sexe + forcats::fct_relevel(seq_vax_covid, "Moderna-Pfizer-Moderna-0"), family = binomial, d_h)
+
+## Examine fit
+summary(fit)
+
+## Get exponentiate coefficients
+str(fit)
+fit$coefficients
+exp(fit$coefficients)
+exp(coef(fit))
+confint(fit) %>% exp()
+
+## Use GT summary
+fit %>% gtsummary::tbl_regression(exponentiate = T)
+```
+
+### 5.2. UTH
+Regardez les help files pour glm(), summary(), tbl_regression().  
+Regardez le package forcats et trouvez le cheat sheet sur internet.
+```{r}
+# glm() 
+# glm() and binomial family
+# summary() of a fit vs summary of a df
+# str(fit): elements of a fit can be accessed as in a list
+# fit$coef vs coef(fit)
+# confint()
+
+# fct_relevel() and forcats package
+
+# tbl_regression()
+
+```
+
+# 6. Générer des figures
+
+## 6.1. Figure 0 simple pour comparer SAE selon séquence
+Utilisez fct_recode() pour raccourcir le nom des séquences vaccinales et COVID.  
+Par la suite, utilisez ggplot() et le geom geom_col() pour créer une figure montrant en x les différentes séquences vaccinales et en y la proportion de SAE. Vous pouvez partir du tableau de la section 5.1.  
+Utilisez labs() pour changer le nom des axes x et y.  
+```{r}
+d_k %>% 
+      mutate(seq_vax_covid = fct_recode(seq_vax_covid, 
+                                        `MMP-` = "Moderna-Moderna-Pfizer-0",
+                                        `MPM-` = "Moderna-Pfizer-Moderna-0",
+                                        `MPM+` = "Moderna-Pfizer-Moderna-1",
+                                        `PPP-` = "Pfizer-Pfizer-Pfizer-0")) %>% 
+      ggplot(aes(x = seq_vax_covid, y = sae)) +
+      geom_col() +
+      labs(x = "Vaccine and COVID combination", y = "Systemic adverse events (%)")
+```
+
+### 6.1. UTH
+Explorez comment fonctionne fct_recode().  
+Regardez des tutoriels d'introduction à ggplot() avec aes().  
+```{r}
+# fct_recode() 
+# ggplot() and aes() and grammar of graphics
+# cf. Kieran Healy Data Visualization in R
+```
+
+```{r, include=F}
+### 6.2.1. Figure 1 comparant statuts COVID chez MPM (sauter pour tutoriel, pour les intéressés)
+# Transformer du format long au format court pour ggplot
+d_l <- d_j %>% pivot_longer(sae:detresse, names_to = "sae", values_to = "proportion")
+
+d_l %>% filter(seq_vax_covid %in% c("Moderna-Pfizer-Moderna-0", "Moderna-Pfizer-Moderna-1")) %>% 
+      ggplot(aes(x = fct_reorder(sae, desc(proportion)), y = proportion, fill = fct_rev(seq_vax_covid))) + 
+      geom_col(position = position_dodge2()) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+      labs(y = NULL,
+           x = "Systemic adverse events",
+           fill = "Vaccination and Covid sequence") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            legend.position = "bottom") +
+      scale_fill_viridis(discrete = T, option = "D")
+```
+
+
+```{r, include=FALSE}
+### 6.2.2. Figure 2 comparant séquences sans COVID (sauter pour tutoriel, pour les intéressés)
+d_l %>% filter(!(seq_vax_covid %in% c("Moderna-Pfizer-Moderna-1"))) %>% 
+      ggplot(aes(x = fct_reorder(sae, desc(proportion)), y = proportion)) + 
+      geom_col(position = position_dodge2()) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+      labs(y = NULL,
+           x = "Systemic adverse events",
+           fill = "Vaccination and Covid sequence") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            legend.position = "bottom") +
+      scale_fill_viridis(discrete = T, option = "D") +
+      facet_wrap(~ seq_vax_covid)
+```
+
+```{r}
+
+```
+
